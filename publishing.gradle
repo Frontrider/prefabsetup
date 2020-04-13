@@ -1,0 +1,53 @@
+if (rootProject.file('private.gradle').exists()) { //Publishing details
+    apply from: rootProject.rootDir.absolutePath+'/private.gradle'
+}
+
+
+task sourcesJar(type: Jar) {
+    classifier = "sources"
+    from sourceSets.main.allSource
+}
+jar{
+    from("fabric.mod.json")
+    from(project.rootProject.rootDir.absolutePath+"/LICENSE")
+}
+
+// configure the maven publication
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            artifacts = [
+                    artifact(tasks.jar),
+                    artifact(tasks.sourcesJar),
+                    artifact(tasks.distZip),
+                    artifact(tasks.distTar)
+            ]
+        }
+    }
+}
+
+artifactory {
+    if (project.hasProperty("artifactoryUsername")) {
+        contextUrl = 'http://server.bbkr.space:8082/artifactory/'
+        publish {
+            repository {
+                if (project.version.contains("SNAPSHOT")) {
+                    repoKey = "libs-snapshot"
+                } else {
+                    repoKey = "libs-release"
+                }
+                username = artifactoryUsername
+                password = artifactoryPassword
+            }
+            defaults {
+                publications('maven')
+
+                publishArtifacts = true
+                publishPom = true
+            }
+        }
+    } else {
+        println "Cannot configure artifactory; please define ext.artifactoryUsername and ext.artifactoryPassword before running artifactoryPublish"
+    }
+}
